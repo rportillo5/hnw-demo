@@ -1,0 +1,73 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.3.5'
+    id 'io.spring.dependency-management' version '1.1.6'
+}
+
+group = 'com.edwardjones.demo'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+    // Flat directory for Databricks JDBC driver JAR (not in Maven Central)
+    // Download from: https://www.databricks.com/spark/jdbc-drivers-download
+    // Place the JAR in the libs/ directory at project root
+    flatDir {
+        dirs 'libs'
+    }
+}
+
+dependencies {
+    // Spring Boot starters
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // PostgreSQL driver (portfolio data)
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // Databricks JDBC driver (financial alerts)
+    // JAR file must be placed in libs/ directory before building
+    // Download: https://www.databricks.com/spark/jdbc-drivers-download
+    // Rename downloaded JAR to: DatabricksJDBC.jar
+    implementation name: 'DatabricksJDBC'
+
+    // Anthropic / OpenAI-compatible HTTP client for Claude API
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // JSON serialization
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// Ensure virtual threads are available — requires Java 21
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['--enable-preview']
+}
+
+tasks.withType(Test).configureEach {
+    jvmArgs '--enable-preview'
+}
+
+tasks.withType(JavaExec).configureEach {
+    jvmArgs '--enable-preview'
+}
+
+bootRun {
+    jvmArgs = ['--enable-preview']
+}

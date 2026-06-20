@@ -1,0 +1,24 @@
+# Environment secrets — never commit
+.env
+src/main/resources/application-local.properties
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Databricks JDBC JAR (download separately)
+libs/*.jar
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
