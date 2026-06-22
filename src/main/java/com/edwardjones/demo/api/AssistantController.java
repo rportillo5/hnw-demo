@@ -163,8 +163,27 @@ public class AssistantController {
         WhatIfResult result = whatIfCalculator.calculate(request.currentLotId(), replacementTicker);
         emitter.send(SseEmitter.event().name("whatif").data(result));
 
-        ExplainResponse resp = explanationService.streamExplain(request.currentLotId(), "whatif",
-            chunk -> sendChunk(emitter, chunk));
+        ExplainResponse resp;
+        if (result.washSaleWarning()) {
+            // The loss is disallowed — explain the wash-sale rule, not tax savings
+            String washSalePrompt = String.format(
+                "The advisor asked about selling a tax lot and buying %s as a replacement. " +
+                "A wash-sale rule violation has been detected: %s " +
+                "Explain clearly that the harvested loss would be DISALLOWED by the IRS wash-sale rule, " +
+                "meaning there are NO tax savings from this trade. " +
+                "Advise waiting 30 days before repurchasing the same or substantially identical security. " +
+                "Keep it to 3-4 sentences. End with: " +
+                "\"You might tell your client: 'To preserve the tax loss, we need to wait 30 days " +
+                "before buying back into %s or a substantially identical position.'\"",
+                replacementTicker,
+                result.washSaleExplanation() != null ? result.washSaleExplanation() : "",
+                replacementTicker);
+            resp = explanationService.streamExplainFreeText(washSalePrompt,
+                chunk -> sendChunk(emitter, chunk));
+        } else {
+            resp = explanationService.streamExplain(request.currentLotId(), "whatif",
+                chunk -> sendChunk(emitter, chunk));
+        }
         emitter.send(SseEmitter.event().name("done").data(Map.of("disclaimer", resp.disclaimer())));
     }
 

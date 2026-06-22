@@ -4,19 +4,25 @@ interface AssistantQueryBoxProps {
   onSubmit: (text: string) => void
   loading: boolean
   placeholder?: string
+  hasLotContext?: boolean
+  hasAlertContext?: boolean
 }
 
-const QUICK_QUERIES = [
-  'Explain this lot',
-  'What if I sell this and buy VTI?',
-  'Summarize the portfolio',
-  'Should I harvest this loss?',
+type Requires = 'none' | 'lot' | 'lot-or-alert'
+
+const QUICK_QUERIES: { label: string; requires: Requires }[] = [
+  { label: 'Explain this lot',                   requires: 'lot-or-alert' },
+  { label: 'What if I sell this and buy VTI?',   requires: 'lot'          },
+  { label: 'Summarize the portfolio',             requires: 'none'         },
+  { label: 'Should I harvest this loss?',         requires: 'lot'          },
 ]
 
 export default function AssistantQueryBox({
   onSubmit,
   loading,
   placeholder = 'Ask about this lot or portfolio...',
+  hasLotContext = false,
+  hasAlertContext = false,
 }: AssistantQueryBoxProps) {
   const [text, setText] = useState('')
 
@@ -42,16 +48,29 @@ export default function AssistantQueryBox({
 
       {/* Quick query chips */}
       <div className="flex flex-wrap gap-2 mb-3">
-        {QUICK_QUERIES.map(q => (
-          <button
-            key={q}
-            onClick={() => onSubmit(q)}
-            disabled={loading}
-            className="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50"
-          >
-            {q}
-          </button>
-        ))}
+        {QUICK_QUERIES.map(({ label, requires }) => {
+          const satisfied =
+            requires === 'none' ||
+            (requires === 'lot' && hasLotContext) ||
+            (requires === 'lot-or-alert' && (hasLotContext || hasAlertContext))
+          const disabled = loading || !satisfied
+          const tooltip = !satisfied
+            ? requires === 'lot-or-alert'
+              ? 'Select a lot or open an alert first'
+              : 'Select a lot first'
+            : undefined
+          return (
+            <button
+              key={label}
+              onClick={() => onSubmit(label)}
+              disabled={disabled}
+              title={tooltip}
+              className="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {label}
+            </button>
+          )
+        })}
       </div>
 
       {/* Free-text input */}

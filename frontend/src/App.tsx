@@ -53,7 +53,7 @@ export default function App() {
     if (streamingSpanRef.current) streamingSpanRef.current.textContent = ''
 
     assistant.query(
-      `explain the ${alert.ticker ?? ''} ${alert.alertType.toLowerCase().replace('_', ' ')} alert`,
+      `explain the ${alert.ticker ? alert.ticker + ' ' : ''}${alert.alertType.toLowerCase().replace('_', ' ')} alert`,
       null,
       {
         alertId: alert.alertId,
@@ -179,6 +179,8 @@ export default function App() {
             <AssistantQueryBox
               onSubmit={handleAssistantQuery}
               loading={assistant.loading}
+              hasLotContext={!!selectedLotId}
+              hasAlertContext={!!pendingAiAlert}
               placeholder={
                 pendingAiAlert
                   ? `Ask about the ${pendingAiAlert.ticker ?? ''} alert...`
@@ -207,7 +209,7 @@ export default function App() {
               />
             )}
 
-            {assistant.response?.intent === 'unsupported' && (
+            {assistant.response?.intent === 'UNSUPPORTED' && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
                 {assistant.response.message}
               </div>
