@@ -56,6 +56,26 @@ export default function HarvestOpportunitiesList({
         </span>
       </div>
 
+      {/* Tax-Loss Harvesting explainer */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+        <div className="text-xs font-semibold uppercase tracking-wide mb-1"
+          style={{ color: 'var(--ej-blue)' }}>
+          What Is Tax-Loss Harvesting?
+        </div>
+        <p className="text-sm text-blue-900 leading-relaxed">
+          Tax-loss harvesting is the practice of selling a position that is currently
+          sitting at an <strong>unrealized loss</strong> to lock in that loss for tax
+          purposes. The realized loss can then offset capital gains elsewhere in the
+          portfolio — reducing your tax bill. A <strong>replacement security</strong>{' '}
+          is purchased immediately to keep the portfolio fully invested. Losses held
+          longer than one year qualify as <strong>long-term</strong> (taxed at a lower
+          rate); losses held one year or less are <strong>short-term</strong> (taxed as
+          ordinary income, making them especially valuable to harvest). Be mindful of
+          the <strong>wash-sale rule</strong>: repurchasing the same or a substantially
+          identical security within 30 days before or after the sale disallows the loss.
+        </p>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

@@ -39,7 +39,7 @@ export default function ClientSplashPage({
             Client Overview
           </p>
           <h1 className="text-2xl font-semibold text-gray-900">
-            Good morning, advisor.
+            Good morning, J. Patterson.
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Here's where things stand for your client today.

@@ -18,8 +18,15 @@ function fmtDollar(n: number) {
   return n < 0 ? `($${abs})` : `$${abs}`
 }
 
+function fmtPct(n: number) {
+  return (n * 100).toFixed(1) + '%'
+}
+
 export default function WhatIfPanel({ result }: WhatIfPanelProps) {
   const taxIsSavings = result.estimatedTax < 0
+  const loss = Math.abs(result.realizedGainLoss)
+  const savings = Math.abs(result.estimatedTax)
+  const taxRate = loss > 0 ? savings / loss : 0
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-5 mb-4">
@@ -51,7 +58,7 @@ export default function WhatIfPanel({ result }: WhatIfPanelProps) {
           </div>
           <div className={`text-lg font-bold ${taxIsSavings ? 'text-green-600' : 'text-amber-600'}`}>
             {taxIsSavings
-              ? `$${Math.abs(result.estimatedTax).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              ? `$${savings.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
               : fmtDollar(result.estimatedTax)
             }
           </div>
@@ -64,6 +71,23 @@ export default function WhatIfPanel({ result }: WhatIfPanelProps) {
           </div>
         </div>
       </div>
+
+      {/* Formula breakdown — shown only for harvested losses without a wash-sale violation */}
+      {taxIsSavings && !result.washSaleWarning && (
+        <div className="mt-4 bg-blue-50 border border-blue-100 rounded-lg p-3">
+          <div className="text-xs font-semibold uppercase tracking-wide mb-2"
+            style={{ color: 'var(--ej-blue)' }}>
+            How this is calculated
+          </div>
+          <div className="text-xs text-gray-600 space-y-0.5 font-mono">
+            <div>Realized loss&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= ${loss.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div>× Long-term cap. gains rate = {fmtPct(taxRate)}</div>
+            <div className="border-t border-blue-200 pt-0.5 font-semibold text-green-700">
+              = ${savings.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} estimated tax savings
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
