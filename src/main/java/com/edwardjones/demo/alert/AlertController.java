@@ -13,6 +13,10 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * REST + SSE endpoints for HNW financial alerts sourced from Databricks.
@@ -20,6 +24,8 @@ import java.sql.SQLException;
  * GET  /api/alerts/stream?clientId=xxx  — SSE stream (React EventSource)
  * PATCH /api/alerts/{alertId}/read      — mark alert as read in Databricks
  * GET  /api/alerts/health               — Databricks connectivity check
+ * POST /api/alerts/test?scenario=X      — dev-only: broadcast a mock alert without Databricks
+ *                                          scenarios: concentration (default), harvest, drift, compliance
  */
 @RestController
 @RequestMapping("/api/alerts")
@@ -98,4 +104,113 @@ public class AlertController {
     }
 
     public record DatabricksHealth(boolean databricksConnected, int sseClientsConnected) {}
+
+    // ── Demo / dev-only ───────────────────────────────────────────────────────
+
+    private static final String DEMO_CLIENT_ID = "00000000-0000-0000-0000-000000000001";
+
+    private static final Map<String, HnwAlert> DEMO_SCENARIOS = Map.of(
+        "concentration", new HnwAlert(
+            UUID.randomUUID().toString(),
+            DEMO_CLIENT_ID,
+            "CONCENTRATION",
+            "HIGH",
+            "LIVE: TSLA concentration spike detected",
+            "AAPL, MSFT, AMZN, and TSLA combined represent 45% of the taxable portfolio. " +
+            "Sector concentration above 40% warrants a discussion about diversification strategy.",
+            "TSLA",
+            Instant.now(),
+            false
+        ),
+        "harvest", new HnwAlert(
+            UUID.randomUUID().toString(),
+            DEMO_CLIENT_ID,
+            "HARVEST_OPPORTUNITY",
+            "MEDIUM",
+            "Tax-loss harvest window open: INTC lot #2",
+            "INTC Lot #2 (purchased 2023-03-14) has an unrealized loss of $4,820. " +
+            "Harvesting now could offset $1,157 in federal taxes before year-end.",
+            "INTC",
+            Instant.now(),
+            false
+        ),
+        "drift", new HnwAlert(
+            UUID.randomUUID().toString(),
+            DEMO_CLIENT_ID,
+            "DRIFT",
+            "MEDIUM",
+            "Allocation drift: Fixed Income under-weight",
+            "Fixed Income has drifted to 14.2% vs. a 20% target (−5.8 pts, −29% relative). " +
+            "This exceeds the 5/25 rebalancing threshold.",
+            null,
+            Instant.now(),
+            false
+        ),
+        "compliance", new HnwAlert(
+            UUID.randomUUID().toString(),
+            DEMO_CLIENT_ID,
+            "COMPLIANCE",
+            "HIGH",
+            "Wash-sale risk: TSLA repurchase within 30 days",
+            "A TSLA lot was sold on 2024-12-05 to harvest a loss. A new TSLA position was " +
+            "opened on 2024-12-18 — within the 30-day wash-sale window. The harvested loss " +
+            "may be disallowed.",
+            "TSLA",
+            Instant.now(),
+            false
+        )
+    );
+
+    /**
+     * Dev-only endpoint — broadcasts a synthetic alert to all connected SSE clients.
+     * Does NOT touch Databricks. Useful when Databricks is unavailable during a demo.
+     *
+     * POST /api/alerts/test?scenario=concentration   (default)
+     * POST /api/alerts/test?scenario=harvest
+     * POST /api/alerts/test?scenario=drift
+     * POST /api/alerts/test?scenario=compliance
+     * POST /api/alerts/test?scenario=all             — fires all four scenarios
+     */
+    @PostMapping("/test")
+    public ResponseEntity<Map<String, Object>> broadcastTestAlert(
+            @RequestParam(defaultValue = "concentration") String scenario) {
+
+        List<HnwAlert> toSend;
+
+        if ("all".equalsIgnoreCase(scenario)) {
+            toSend = List.copyOf(DEMO_SCENARIOS.values());
+        } else {
+            HnwAlert alert = DEMO_SCENARIOS.get(scenario.toLowerCase());
+            if (alert == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Unknown scenario '" + scenario + "'",
+                    "validScenarios", List.of("concentration", "harvest", "drift", "compliance", "all")
+                ));
+            }
+            // Re-create with a fresh UUID and current timestamp so repeated calls work
+            toSend = List.of(new HnwAlert(
+                UUID.randomUUID().toString(),
+                alert.clientId(),
+                alert.alertType(),
+                alert.severity(),
+                alert.title(),
+                alert.detail(),
+                alert.ticker(),
+                Instant.now(),
+                false
+            ));
+        }
+
+        int clients = sseRegistry.connectedClientCount();
+        toSend.forEach(alert -> {
+            log.info("[TEST] Broadcasting mock alert '{}' to {} SSE client(s)", alert.title(), clients);
+            sseRegistry.broadcast("alert", alert);
+        });
+
+        return ResponseEntity.ok(Map.of(
+            "broadcasted", toSend.size(),
+            "scenario", scenario,
+            "sseClientsNotified", clients
+        ));
+    }
 }
